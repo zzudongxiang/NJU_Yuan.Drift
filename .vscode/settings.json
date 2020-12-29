@@ -1,0 +1,24 @@
+{
+    "files.autoGuessEncoding": true,
+    "editor.fontSize": 20,
+    "debug.toolBarLocation": "docked",
+    "files.autoSave": "afterDelay",
+    "editor.tabCompletion": "on",
+    "editor.detectIndentation": false,
+    "explorer.confirmDelete": false,
+    "explorer.confirmDragAndDrop": false,
+    "python.formatting.provider": "yapf",
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.wordWrapColumn": 200,
+    "debug.console.wordWrap": false,
+    "python.formatting.yapfArgs": [
+        "--style",
+        "{column_limit: 180}"
+    ],
+    "editor.rulers": [
+        120
+    ],
+    "python.linting.enabled": false,
+}

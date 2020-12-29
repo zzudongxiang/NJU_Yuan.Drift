@@ -1,0 +1,1 @@
+pyinstaller Setup.py -w -F -i "lib/NJU.ico"
