@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['Setup.py'],
-             pathex=['C:\\Users\\ASUS\\Desktop\\温漂控制系统'],
+             pathex=['D:\\Repository\\NJU_Yuan.Drift'],
              binaries=[],
              datas=[],
              hiddenimports=[],

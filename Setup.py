@@ -1,191 +1,167 @@
 #!/usr/bin/python3
 # -*- coding: UTF-8 -*-
 from tkinter import messagebox
-from PIL import ImageGrab
-import tkinter as TK
 import numpy as np
 import time
 import cv2
 import os
 
-# User Import
-from module.Windows import *
-from module.Config import Config
-from module.Stepper import Stepper
+# User Module Import
+from module.DataFile import DataFile
 from module.Correct import Correct
+from module.Stepper import Stepper
+from module.Config import Config
+from module.Forms import Forms
+from module.Draw import Draw
+from module.Grab import Grab
 
-# 设置环境变量, 创建温漂控制的核心部分对象
-CorrectImage = Correct()
-StepMotor = Stepper()
-Configure = Config()
-_SetBackground = False
-_ControlStatus = False
-_WindowsClosed = False
-_WindowSize = []
-
-# 手动移动电机的相关参数
-SpeedLevel = Configure.ConfigObj["SpeedLevel"]
-StepInvert = Configure.ConfigObj["StepInvert"]
-_LevelIndex = 2
-_OldSpeed = -1
-
-# 偏移量的平均值
-MaxLen = 36000000
-OffsetList = np.zeros((MaxLen, 3))
-OffsetIndex = 0
+# 编译生成单个*.exe文件
+# pyinstaller Setup.py -w -F -i "lib/NJU.ico"
 
 
-# 设置背景图片的功能
-def SetBackgroundCallBack():
-    global _SetBackground
-    _SetBackground = True
-
-
-# 使用温漂控制系统进行控制
+# 开启或关闭温漂补偿功能
 def ControlCallBack():
-    global _ControlStatus, BtnControl, OffsetList, OffsetIndex
-    _ControlStatus = ~_ControlStatus
-    if ~_ControlStatus:
-        Text = '温漂控制OFF'
-        Color = 'black'
-        #OffsetList = np.delete(OffsetList, range(OffsetIndex, MaxLen), axis=0)
-        DirPath = './logs/'
-        if not os.path.exists(DirPath):
-            os.makedirs(DirPath)
-        FilePath = DirPath + '%d.dat' % time.time()
-        np.savetxt(FilePath, OffsetList[:OffsetIndex, :], delimiter=',')
-        #messagebox.showinfo("记录成功", "当前记录储存在: %s" % FilePath)
+    # 生命全局变量并获取按下按键的具体数值
+    global Processing, DataFileObj, GrabObj, FormsObj, CorrectObj, ShowIndex
+    if not Processing:
+        # 隐藏主窗口
+        FormsObj.GrabForm.state('icon')
+        time.sleep(0.25)
+
+        # 截取一张背景图像, 并处理后传入参数
+        Background = GrabObj.GrabImage(FormsObj)
+        DrawObj.SetBackground(Background)
+        CorrectObj.SetBackground(Background)
+        DataFileObj.StartRecording(Background)
+        FailedTime = time.time()
+        ShowIndex = 0
+        Processing = True
     else:
-        OffsetList = np.zeros((36000000, 3))
-        OffsetIndex = 0
-        Text = '温漂控制ON'
-        Color = 'red'
-    BtnControl.configure(text=Text, foreground=Color)
+        # 弹窗显示文件记录位置
+        DataFileObj.StopRecording()
+        messagebox.showinfo('数据记录成功', '本次实验的记录已储存在%s文件路径下' % DataFileObj.DataPath)
+        Processing = False
 
 
-# 装载配置文件
-def SetConfigCallBack():
-    global Configure, StepMotor, SpeedLevel, StepInvert, AveLen
-    Configure = Config()
-    StepMotor = Stepper()
-    SpeedLevel = Configure.ConfigObj["SpeedLevel"]
-    StepInvert = Configure.ConfigObj["StepInvert"]
-    AveLen = Configure.ConfigObj["AverageLen"]
-    messagebox.showinfo("操作成功", "成功加载配置文件!")
-
-
-# 点击鼠标移动相对应的距离
+# 移动设备的回调函数
 def MoveCallBack(event):
-    global _ControlStatus, _LevelIndex, SpeedLevel, StepInvert, StepMotor
+    global Processing, SpeedStep, SpeedIndex, StepperObj
 
     KeyDown = event.widget._name
-    Step = SpeedLevel[_LevelIndex]
-    Move = [0, 0]
+    Step = SpeedStep[SpeedIndex]
 
     # 自动控制模式禁用手动控制
-    if _ControlStatus:
-        messagebox.showinfo("警告", "当前位移台由程序控制!")
+    if Processing:
+        messagebox.showwarning("警告", "位移台暂时由温漂控制程序接管")
         return
 
     # 切换速度档位
     if KeyDown == '⊙':
-        tmp_LevelIndex = _LevelIndex + 1
-        if tmp_LevelIndex >= len(SpeedLevel):
-            _LevelIndex = 0
-        else:
-            _LevelIndex = tmp_LevelIndex
+        SpeedIndex = (SpeedIndex + 1) % len(SpeedStep)
     else:
-        # X轴正方向
+        # X轴方向移动
         if KeyDown == '→' or KeyDown == '↗' or KeyDown == '↘':
-            if StepInvert[0] != 0:
-                Move[0] = -Step
-            else:
-                Move[0] = Step
-
-        # X轴负方向
+            AxisStep = Step
         elif KeyDown == '←' or KeyDown == '↖' or KeyDown == '↙':
-            if StepInvert[0] == 0:
-                Move[0] = -Step
-            else:
-                Move[0] = Step
-
-        # Y轴正方向
-        if KeyDown == '↑' or KeyDown == '↖' or KeyDown == '↗':
-            if StepInvert[1] != 0:
-                Move[1] = -Step
-            else:
-                Move[1] = Step
-
-        # Y轴负方向
-        elif KeyDown == '↓' or KeyDown == '↙' or KeyDown == '↘':
-            if StepInvert[1] == 0:
-                Move[1] = -Step
-            else:
-                Move[1] = Step
-
-        # 移动电机到指定位置
-        for Axis in range(2):
-            if Move[Axis] != 0:
-                StepMotor.Move(Axis, Move[Axis])
-
-
-# 关闭窗口之前关闭关联的窗口
-def OnClosing():
-    global GrabWindows, OperateWindows, _WindowsClosed
-    _WindowsClosed = True
-    GrabWindows.destroy()
-    OperateWindows.destroy()
-
-
-# 获取TK的窗口, 并开启手动操作线程
-GrabWindows = GetGrabWindows(OnClosing)
-OperateWindows, LBSpeed, BtnControl = GetOperateWindows(OnClosing, SetBackgroundCallBack, ControlCallBack, SetConfigCallBack, MoveCallBack)
-
-# 连续捕获每一帧图像并进行处理
-while not _WindowsClosed:
-    # 计算当前捕捉的位置和大小
-    try:
-        GrabWindows.update()
-        OperateWindows.update()
-        WindowSize = [GrabWindows.winfo_width(), GrabWindows.winfo_height()]
-        SPoint = (GrabWindows.winfo_x() + 8, GrabWindows.winfo_y() + 30)
-        EPoint = (SPoint[0] + WindowSize[0], SPoint[1] + WindowSize[1])
-        Box = (SPoint[0], SPoint[1], EPoint[0], EPoint[1])
-        if _WindowSize != WindowSize:
-            _WindowSize = WindowSize
-            cv2.resizeWindow("Image", WindowSize[0], WindowSize[1])
-            Configure.ConfigObj["WindowSize"] = WindowSize
-            Configure.Save()
-    except Exception as Ex:
-        break
-
-    # 抓取屏幕图像, 然后转为OpenCV的GBR格式
-    GrabScreen = ImageGrab.grab(bbox=Box)
-    Image = cv2.cvtColor(np.array(GrabScreen), cv2.COLOR_RGB2BGR)
-    if _SetBackground:
-        CorrectImage.SetBackground(Image)
-        _SetBackground = False
-    else:
-        Image, Offset, FPS = CorrectImage.GetOffset(Image)
-        if _ControlStatus:
-            try:
-                if OffsetIndex < MaxLen:
-                    OffsetList[OffsetIndex, :] = [Offset[0], Offset[1], FPS]
-                    OffsetIndex += 1
-                StepMotor.SetOffset(Offset)
-                Text = '温漂控制系统'
-            except Exception as Ex:
-                messagebox.showinfo("Error", Ex)
+            AxisStep = -Step
         else:
-            # 修改当前的速度标识
-            if _LevelIndex >= len(SpeedLevel):
-                _LevelIndex = len(SpeedLevel) - 1
-                _OldSpeed = -1
-            if _OldSpeed != SpeedLevel[_LevelIndex]:
-                _OldSpeed = SpeedLevel[_LevelIndex]
-            Text = '步长:%d' % _OldSpeed
-        LBSpeed.configure(text=Text)
+            AxisStep = 0
+        StepperObj.Move(0, Step)
 
-    # 显示图像并配置为窗口程序的主循环
-    cv2.imshow("Image", Image)
-cv2.destroyAllWindows()
+        # Y轴方向移动
+        if KeyDown == '↑' or KeyDown == '↖' or KeyDown == '↗':
+            AxisStep = Step
+        elif KeyDown == '↓' or KeyDown == '↙' or KeyDown == '↘':
+            AxisStep = -Step
+        else:
+            AxisStep = 0
+        StepperObj.Move(1, Step)
+
+
+# 鼠标点击时操作
+def OnCVMouse(event, x, y, flags, param):
+    global ShowIndex
+    if event == cv2.EVENT_LBUTTONDOWN:
+        ShowIndex = (ShowIndex + 1) % 5
+
+
+# 构造配置文件对象
+ConfigObj = Config()
+DataFileObj = DataFile()
+DrawObj = Draw(ConfigObj, OnCVMouse)
+FormsObj = Forms(ConfigObj, ControlCallBack, MoveCallBack)
+CorrectObj = Correct(ConfigObj)
+StepperObj = Stepper(ConfigObj)
+GrabObj = Grab(ConfigObj)
+
+# 方便调用的变量列表
+SpeedStep = ConfigObj.Data["Stepper"]["SpeedStep"]
+StrSize = ConfigObj.Data["Windows"]["StrSize"]
+StrColor = ConfigObj.Data["Windows"]["StrColor"]
+Processing = False
+OldProcessing = True
+SpeedIndex = 0
+OldSpeedIndex = -1
+FailedTime = 0
+ShowIndex = 0
+
+# 主程序刷新界面与内容
+while FormsObj.Update():
+    # 抓取图像并进行处理
+    CCDImage = GrabObj.GrabImage(FormsObj)
+
+    # 获取图像并处理图像数据
+    if Processing:
+        Ret, Offset, WarpImage, DiffImage, MatchPoint = CorrectObj.GetOffset(CCDImage)
+        StepperObj.SetOffset(Offset)
+        DataFileObj.Dump(CCDImage, Ret, Offset, WarpImage, DiffImage)
+
+        # 更新显示的内容
+        if ShowIndex == 0:
+            IMG = DrawObj.DrawImage(CCDImage, MatchPoint)
+        elif ShowIndex == 1:
+            IMG = DrawObj.Background
+        elif ShowIndex == 2:
+            IMG = CCDImage
+        elif ShowIndex == 3:
+            IMG = WarpImage
+        elif ShowIndex == 4:
+            IMG = DiffImage
+
+        # 判断是否有效抓取到对象
+        if not Ret:
+            if time.time() - FailedTime > 10:
+                messagebox.showerror("无法识别特征", "无法识别图像的特征信息, 且等待恢复超时")
+                ControlCallBack()
+        else:
+            FailedTime = time.time()
+    else:
+        IMG = CCDImage
+
+    # 更新绘制
+    Dic = ['MOKE Drift', 'Background', 'CCD Image', 'Warp Image', 'Diff Image']
+    cv2.putText(IMG, Dic[ShowIndex], (5, 25 * StrSize), cv2.FONT_HERSHEY_COMPLEX, StrSize, StrColor, 1)
+    cv2.imshow('Image', IMG)
+
+    # 刷新设备的在线状态与速度
+    if OldSpeedIndex != SpeedIndex:
+        OldSpeedIndex = SpeedIndex
+        if Stepper.Status:
+            Color = 'green'
+            Text = '设备在线 | 速度:%5d'
+        else:
+            Color = 'red'
+            Text = '设备离线 | 速度:%5d'
+        Text = Text % SpeedStep[SpeedIndex]
+        FormsObj.MenuStatus.configure(text=Text, background=Color)
+
+    # 刷新当前的记录状态
+    if OldProcessing != Processing:
+        OldProcessing = Processing
+        if Processing:
+            Color = 'green'
+            Text = '控\n制\n状\n态\n\nON'
+        else:
+            Color = 'red'
+            Text = '控\n制\n状\n态\n\nOFF'
+        FormsObj.MenuSwitch.configure(text=Text, foreground=Color)

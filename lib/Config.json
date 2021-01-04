@@ -1,43 +1,42 @@
 {
-    "MatchRange": 50,
-    "MatchCount": 20,
-    "WindowSize": [
-        570,
-        388
-    ],
-    "AverageLen": 10,
-    "Speed": 50000,
-    "StepRate": [
-        -3,
-        3
-    ],
-    "SpeedLevel": [
-        1,
-        10,
-        100,
-        500,
-        1000,
-        5000,
-        10000
-    ],
-    "StepInvert": [
-        0,
-        0
-    ],
-    "Paint": {
-        "LSize": 2,
-        "LColor": [
+    "Correct": {
+        "MatchRange": 50,
+        "MatchCount": 20
+    },
+    "Stepper": {
+        "CorrectStep": [
+            2,
+            2
+        ],
+        "SpeedStep": [
+            1,
+            10,
+            100,
+            500,
+            1000
+        ],
+        "SteperInvert": [
+            0,
+            0
+        ]
+    },
+    "Windows": {
+        "Size": [
+            400,
+            379
+        ],
+        "ThumbRate": 0.3,
+        "LineSize": 2,
+        "LineColor": [
             0,
             0,
             255
         ],
-        "SSize": 0.8,
-        "SHeight": 20,
-        "SColor": [
-            255,
+        "StrSize": 1,
+        "StrColor": [
+            0,
             255,
             0
-        ],
-        "ResizeRate": 0.3
+        ]
     }
 }
