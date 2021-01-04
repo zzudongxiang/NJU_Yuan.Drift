@@ -1,5 +1,9 @@
 data/*
+
 build/*
+
 dist/*
+
 release/*
+
 *.pyc
