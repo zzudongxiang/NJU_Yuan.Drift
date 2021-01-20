@@ -8,8 +8,6 @@ import os
 # 绘制综合显示的图像内容
 class Draw:
 
-
-
     # 传入配置文件, 初始化相关的设置
     def __init__(self, ConfigObj, OnCVMouse):
         # 子图像缩放的比例

@@ -92,5 +92,11 @@ class Correct:
         DiffImage = np.array(abs(AImage - BImage), np.uint8)
         DiffImage = cv2.cvtColor(DiffImage, cv2.COLOR_GRAY2BGR)
 
+        # 对相减结果取均值滤波
+        BlurSize = int(min(DiffImage.shape[:2]) * 0.01)
+        if BlurSize < 1:
+            BlurSize = 1
+        DiffImage = cv2.blur(DiffImage, (BlurSize, BlurSize))
+
         # 返回结果
         return True, Offset, WarpImage, DiffImage, MatchPoint

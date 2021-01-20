@@ -66,7 +66,7 @@ def MoveCallBack(event):
             AxisStep = -Step
         else:
             AxisStep = 0
-        StepperObj.Move(0, Step)
+        StepperObj.Move(0, AxisStep)
 
         # Y轴方向移动
         if KeyDown == '↑' or KeyDown == '↖' or KeyDown == '↗':
@@ -75,7 +75,7 @@ def MoveCallBack(event):
             AxisStep = -Step
         else:
             AxisStep = 0
-        StepperObj.Move(1, Step)
+        StepperObj.Move(1, AxisStep)
 
 
 # 鼠标点击时操作
@@ -87,7 +87,7 @@ def OnCVMouse(event, x, y, flags, param):
 
 # 构造配置文件对象
 ConfigObj = Config()
-DataFileObj = DataFile()
+DataFileObj = DataFile(ConfigObj)
 DrawObj = Draw(ConfigObj, OnCVMouse)
 FormsObj = Forms(ConfigObj, ControlCallBack, MoveCallBack)
 CorrectObj = Correct(ConfigObj)
@@ -120,7 +120,7 @@ while FormsObj.Update():
         if ShowIndex == 0:
             IMG = DrawObj.DrawImage(CCDImage, MatchPoint)
         elif ShowIndex == 1:
-            IMG = DrawObj.Background
+            IMG = DrawObj.Background.copy()
         elif ShowIndex == 2:
             IMG = CCDImage
         elif ShowIndex == 3:
@@ -139,14 +139,14 @@ while FormsObj.Update():
         IMG = CCDImage
 
     # 更新绘制
-    Dic = ['MOKE Drift', 'Background', 'CCD Image', 'Warp Image', 'Diff Image']
+    Dic = ['1.MOKE', '2.Background', '3.CCD', '4.Warp', '5.Sub']
     cv2.putText(IMG, Dic[ShowIndex], (5, 25 * StrSize), cv2.FONT_HERSHEY_COMPLEX, StrSize, StrColor, 1)
     cv2.imshow('Image', IMG)
 
     # 刷新设备的在线状态与速度
     if OldSpeedIndex != SpeedIndex:
         OldSpeedIndex = SpeedIndex
-        if Stepper.Status:
+        if StepperObj.Status:
             Color = 'green'
             Text = '设备在线 | 速度:%5d'
         else:

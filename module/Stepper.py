@@ -13,11 +13,11 @@ class Stepper:
     # 构造相关函数
     def __init__(self, ConfigObj):
         # 在进行温漂控制时单次移动的步长大小(脉冲个数)
-        CorrectStep = ConfigObj.Data["Stepper"]["CorrectStep"]
+        self.CorrectStep = ConfigObj.Data["Stepper"]["CorrectStep"]
         # 用户可以切换的脉冲速度范围
-        SpeedStep = ConfigObj.Data["Stepper"]["SpeedStep"]
+        self.SpeedStep = ConfigObj.Data["Stepper"]["SpeedStep"]
         # 位移台两个轴是否反转
-        SteperInvert = ConfigObj.Data["Stepper"]["SteperInvert"]
+        self.SteperInvert = ConfigObj.Data["Stepper"]["SteperInvert"]
 
         # 尝试连接设备并进行设备初始化
         self.MT_API.MT_Init()
@@ -27,7 +27,7 @@ class Stepper:
             self.Status = False
         else:
             self.Status = True
-            self.SetSpeed(SpeedStep[0])
+            self.SetSpeed(5000)
 
     # 设置位移台的移动速度, 同时修改其运动加速度
     def SetSpeed(self, Speed):
@@ -35,10 +35,9 @@ class Stepper:
         self.MT_API.MT_Set_Axis_Halt_All()
         for Index in range(2):
             self.MT_API.MT_Set_Axis_Mode_Position(Index)
-            self.MT_API.MT_Set_Axis_Position_Acc(Index, self.Speed * 10)
-            self.MT_API.MT_Set_Axis_Position_Dec(Index, self.Speed * 10)
-            self.MT_API.MT_Set_Axis_Position_V_Max(Index, self.Speed)
-        self.Speed = Speed
+            self.MT_API.MT_Set_Axis_Position_Acc(Index, Speed * 10)
+            self.MT_API.MT_Set_Axis_Position_Dec(Index, Speed * 10)
+            self.MT_API.MT_Set_Axis_Position_V_Max(Index, Speed)
 
     # 释放相关资源
     def __del__(self):
@@ -50,7 +49,7 @@ class Stepper:
     def Move(self, Axis, Step):
         if self.Status and Step != 0:
             # 计算指定的轴是否需要运动反转
-            if SteperInvert[Axis] != 0:
+            if self.SteperInvert[Axis] != 0:
                 Step = -Step
             # 相对移动对应的轴
             self.MT_API.MT_Set_Axis_Position_P_Target_Rel(Axis, Step)
@@ -60,5 +59,5 @@ class Stepper:
         if self.Status:
             # 计算偏移量, 换算位脉冲给到位移台
             for Index in range(2):
-                Num = int(Offset[Index] * self.SpeedStep[Index])
+                Num = int(Offset[Index] * self.CorrectStep[Index])
                 self.Move(Index, Num)
