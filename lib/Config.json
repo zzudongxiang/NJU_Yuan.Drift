@@ -1,12 +1,16 @@
 {
     "Correct": {
         "MatchRange": 50,
-        "MatchCount": 20
+        "MatchCount": 20,
+        "HistRange": [
+            100,
+            200
+        ]
     },
     "Stepper": {
         "CorrectStep": [
-            2,
-            2
+            5,
+            5
         ],
         "SpeedStep": [
             1,
@@ -22,8 +26,8 @@
     },
     "Windows": {
         "Size": [
-            400,
-            379
+            500,
+            500
         ],
         "ThumbRate": 0.3,
         "LineSize": 2,
@@ -38,5 +42,10 @@
             255,
             0
         ]
+    },
+    "RawData": {
+        "Ori": 1,
+        "Warp": 1,
+        "Sub": 1
     }
 }

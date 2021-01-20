@@ -18,6 +18,8 @@ class Config:
             "MatchRange": 50,
             # 最小置信匹配点个数
             "MatchCount": 20,
+            # 直方图归一化的范围
+            "HistRange": [100, 200],
         },
 
         # 步进电机的相关设置
@@ -78,9 +80,9 @@ class Config:
                 LoadConfig = json.load(JsonFile)
 
             # 匹配本地文件中配置文件信息与默认信息差异
-            for Key in self.Data.keys():
-                if Key in LoadConfig.keys():
-                    self.Data[Key] = LoadConfig[Key]
+            for Section in self.Data.keys():
+                if Section in LoadConfig.keys():
+                    self.Data[Section] = LoadConfig[Section]
         except:
             pass
 
@@ -92,4 +94,4 @@ class Config:
 # 测试函数
 if __name__ == "__main__":
     ConfigObj = Config()
-    print(ConfigObj.Data["Stepper"]["CorrectStep"])
+    print(ConfigObj.Data["Correct"]["HistRange"])

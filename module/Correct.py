@@ -19,6 +19,8 @@ class Correct:
         self._MRange = ConfigObj.Data["Correct"]["MatchRange"]
         # [全局参数]匹配到的有效特征点高于该值时视为有效匹配, 建议不超过20
         self._MCount = ConfigObj.Data["Correct"]["MatchCount"]
+        # [全局变量]对输出的相减结果进行直方图归一化操作
+        self._HistRange = ConfigObj.Data["Correct"]["HistRange"]
 
     # [私有方法]对图像进行预处理, 并提取图像的特征点数据
     def _Private_PreProcess(self, SrcImage):
@@ -90,13 +92,14 @@ class Correct:
         AImage = np.array(cv2.cvtColor(WarpImage, cv2.COLOR_BGR2GRAY), np.uint8)
         BImage = np.array(cv2.cvtColor(self._Background["Image"], cv2.COLOR_BGR2GRAY), np.uint8)
         DiffImage = np.array(abs(AImage - BImage), np.uint8)
-        DiffImage = cv2.cvtColor(DiffImage, cv2.COLOR_GRAY2BGR)
 
-        # 对相减结果取均值滤波
-        BlurSize = int(min(DiffImage.shape[:2]) * 0.01)
-        if BlurSize < 1:
-            BlurSize = 1
-        DiffImage = cv2.blur(DiffImage, (BlurSize, BlurSize))
+        # 对相减结果的直方图做归一化操作
+        MinDiff = DiffImage.min()
+        MaxDiff = DiffImage.max()
+        DiffImage = (self._HistRange[1] - self._HistRange[0]) / (MaxDiff - MinDiff) * (DiffImage - MinDiff) + self._HistRange[0]
+        DiffImage[DiffImage < self._HistRange[0]] = self._HistRange[0]
+        DiffImage[DiffImage > self._HistRange[1]] = self._HistRange[1]
+        DiffImage = cv2.cvtColor(np.array(DiffImage, np.uint8), cv2.COLOR_GRAY2BGR)
 
         # 返回结果
         return True, Offset, WarpImage, DiffImage, MatchPoint
